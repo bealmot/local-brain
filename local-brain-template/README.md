@@ -1,197 +1,135 @@
-# Local Brain
+Local Brain
 
-Local Brain is a **self-hosted personal AI stack**:
+Local Brain is a self-hosted personal AI stack designed to give you a private, persistent, retrieval-augmented assistant that runs entirely on your own machine.
 
-- 🧠 RAG index (Chroma) over your own data  
-- ⚙️ LM Studio as the local LLM engine  
-- 🌐 FastAPI “Brain API” exposing an **OpenAI-compatible** interface  
-- 💬 Open WebUI as the browser front-end  
+It integrates:
+- RAG index (ChromaDB) built over your personal data
+- LM Studio as the local LLM inference engine
+- Brain API (FastAPI) exposing an OpenAI-compatible /v1/ interface
+- Open WebUI as the front-end workspace
 
-All inference and data stay on your machine.
+Everything runs locally. Nothing leaves your machine.
 
----
+-----------------------------------------------------------------------
+ARCHITECTURE
 
-## Architecture
+Open WebUI (browser UI)
+        │
+        ▼
+Brain API (FastAPI + uvicorn, exposes OpenAI-compatible endpoints)
+        │
+        ├── RAG retrieval (your Python code)
+        │
+        ├── Chroma vector index (./index)
+        │
+        └── Logged conversations (./data/conversations.jsonl)
+        │
+        ▼
+LM Studio API (localhost:1234)
+Local Model (e.g. gpt-oss-20b)
 
-```text
-                           ┌──────────────────────────┐
-                           │        Open WebUI        │
-                           │  Browser UI / Workspace  │
-                           └────────────┬─────────────┘
-                                        │
-                                        ▼
-                         HTTP (OpenAI-compatible API)
-                                        │
-                           ┌────────────┴────────────┐
-                           │      Brain API (v1)     │
-                           │    FastAPI + uvicorn    │
-                           └────────────┬────────────┘
-                                        │
-          ┌─────────────────────────────┼─────────────────────────────┐
-          │                             │                             │
-          ▼                             ▼                             ▼
-
-   ┌───────────────┐           ┌────────────────┐           ┌──────────────────┐
-   │ RAG Retrieval │◄──Query── │  Chroma Index  │           │ conversations.jsonl│
-   │ (your code)   │           │ ./index        │           │ ./data            │
-   └───────────────┘           └────────────────┘           └──────────────────┘
-
-                                        │
-                                        ▼
-                              ┌────────────────┐
-                              │ LM Studio API │
-                              │ localhost:1234 │
-                              └────────────────┘
-                                        │
-                                    Local Model
-                             (e.g. gpt-oss-20b)
-
-
-Prerequisites
+-----------------------------------------------------------------------
+PREREQUISITES
 
 You should be comfortable with:
+- Terminal use
+- Python virtual environments
+- Docker
+- Basic networking
 
-	A terminal
+You need:
+- Python 3.10+
+- Git
+- Docker
+- LM Studio desktop app
 
-	Python virtual environments
+-----------------------------------------------------------------------
+1. INSTALL AND CONFIGURE LM STUDIO
 
-	Docker
+1. Install LM Studio.
+2. Launch LM Studio.
+3. Download a model (example: gpt-oss-20b).
+4. Start the OpenAI-Compatible Server:
+     Host: localhost
+     Port: 1234
+5. Verify that it is running:
+     curl -s http://localhost:1234/v1/models
 
-	Basic networking concepts
+If you see JSON, LM Studio is working.
 
-You will need:
-	
-	Python 3.10+
-	
-	Git
-
-	Docker (for Open WebUI)
-
-	LM Studio (desktop app)
-
-
-1. Install & Configure LM Studio
-
-Download and install LM Studio from their website.
-
-Open LM Studio.
-
-Download a model compatible with the OpenAI-style server, e.g.:
-
-gpt-oss-20b (or any other model you prefer)
-
-Enable the OpenAI-compatible server in LM Studio:
-
-Host: localhost
-
-Port: 1234 (default; you can change it if you like)
-
-Make sure it's running before proceeding.
-
-You should be able to hit:
-
-curl -s http://localhost:1234/v1/models
-
-and get JSON back.
-
-2. Clone Local Brain
+-----------------------------------------------------------------------
+2. CLONE LOCAL BRAIN
 
 git clone git@github.com:bealmot/local-brain.git
 cd local-brain
 
-3. Run the Interactive Setup Wizard
+-----------------------------------------------------------------------
+3. RUN THE INTERACTIVE SETUP WIZARD
 
-This script will:
-
-Ask for LM Studio base URL & model name
-
-Verify that LM Studio is reachable
-
-Ask where to store:
-
-chat exports (chat_export/)
-
-index (index/)
-
-data (data/)
-
-Write config.yaml
-
-Create the required directories
-
-Optionally create requirements.txt
+The setup wizard does the following:
+- Asks for LM Studio base URL
+- Verifies LM Studio is reachable
+- Asks for:
+     chat_export directory
+     index directory
+     data directory
+- Creates the directories automatically
+- Writes config.yaml
+- Optionally writes requirements.txt
 
 Run:
-
 python3 setup_brain.py
 
-Follow the prompts. Typical answers:
-
+Typical values:
 LM Studio base URL: http://localhost:1234/v1
-
-Model ID: the ID you saw from /v1/models, e.g. openai/gpt-oss-20b
-
-Base dir: the project directory (.)
-
+Model ID: something like openai/gpt-oss-20b
+Base dir: .
 Chat export dir: chat_export
-
 Index dir: index
-
 Data dir: data
-
 API port: 8001
 
-If LM Studio is not reachable at the URL you provide, the wizard will stop and tell you to start the server first.
+The wizard will stop if LM Studio cannot be reached.
 
-4. Create & Activate Python Virtual Env
-
-From the project root:
+-----------------------------------------------------------------------
+4. CREATE AND ACTIVATE PYTHON VIRTUAL ENVIRONMENT
 
 python3 -m venv rag
 source rag/bin/activate
 
+Windows PowerShell:
+.\rag\Scripts\activate
 
-(Use .\rag\Scripts\activate on Windows PowerShell if needed.)
+-----------------------------------------------------------------------
+5. INSTALL DEPENDENCIES
 
-5. Install Python Dependencies
-
-If you let the setup wizard create requirements.txt, then:
-
+If requirements.txt exists:
 pip install -r requirements.txt
 
 Otherwise:
-
 pip install fastapi uvicorn chromadb pydantic pyyaml requests
 
-6. Run the Brain API
-
-From the project root with venv activated:
+-----------------------------------------------------------------------
+6. RUN THE BRAIN API
 
 uvicorn brain_api:app --host 0.0.0.0 --port 8001
 
+Tests:
+curl -s http://localhost:8001/health
+curl -s http://localhost:8001/v1/models
 
-You should now be able to hit:
-
-curl -s http://localhost:8001/health | jq
-curl -s http://localhost:8001/v1/models | jq
-
-
-and get JSON responses.
-
-You can also test a completion:
-
+Test a completion:
 curl -s -X POST http://localhost:8001/v1/chat/completions \
-  -H 'Content-Type: application/json' \
+  -H "Content-Type: application/json" \
   -d '{
-    "model": "<your-model-id>",
-    "messages": [
-      { "role": "user", "content": "Say hello from the Local Brain API." }
-    ]
-  }' | jq
+        "model": "<your-model-id>",
+        "messages": [
+          {"role": "user", "content": "Say hello from the Local Brain API."}
+        ]
+      }'
 
-7. Run Open WebUI (Docker)
-
-If you don’t already have Open WebUI:
+-----------------------------------------------------------------------
+7. RUN OPEN WEBUI (DOCKER)
 
 sudo docker run -d \
   --name openwebui \
@@ -199,115 +137,72 @@ sudo docker run -d \
   -v openwebui_data:/app/backend/data \
   ghcr.io/open-webui/open-webui:main
 
-
-This will:
-
-Pull the latest Open WebUI image
-
-Start it on http://localhost:3000
-
-Open your browser to:
-
+Open your browser:
 http://localhost:3000
 
-Create an admin user if prompted.
+Create an admin account if needed.
 
-8. Connect Open WebUI to Local Brain
+-----------------------------------------------------------------------
+8. CONNECT OPEN WEBUI TO THE LOCAL BRAIN API
 
 Inside Open WebUI:
-
-Go to Settings → Admin → Connections (or Models / API settings depending on version).
+Settings → Admin → Connections
 
 Add a new OpenAI-compatible connection.
 
-If Open WebUI is running in Docker with default bridge networking, your host is usually reachable as 172.17.0.1 from inside the container.
+If WebUI is running through Docker bridge networking, your host is likely reachable at:
+172.17.0.1
 
 Use:
-
 Base URL: http://172.17.0.1:8001/v1
+API key: anything (ignored)
+Model IDs: leave blank for auto-discovery or specify manually
 
-API key: (can be anything, Local Brain ignores it)
+Save.
 
-Model IDs: leave blank to use /v1/models auto-discovery, or manually put the model ID you configured in config.yaml.
+Test:
+Ask: "Reply with web-ok-1"
 
-Save the connection.
+If it responds correctly, the Local Brain pipeline is working.
 
-In the main chat view:
-
-Select this connection/model.
-
-Ask something like:
-
-“Test: reply with web-ok-1 and nothing else.”
-
-If everything is wired correctly, the response will come from your Local Brain API using RAG + LM Studio.
-
-9. Where Your Data Lives
-
-By default (depending on your answers in the setup wizard):
+-----------------------------------------------------------------------
+9. WHERE YOUR DATA LIVES
 
 chat_export/
-Put your exported ChatGPT conversations or other text corpora here.
-Your indexing scripts can read from this folder.
+- Put your exported ChatGPT logs or other text files here.
 
 index/
-Chroma / vector index files.
+- Chroma vector index files.
 
 data/
-Runtime data:
+- Conversations logged as JSONL.
+- Future summaries, profiles, metadata.
 
-conversations.jsonl – logs of each interaction
+These paths come from config.yaml created by setup_brain.py.
 
-future: profiles, summaries, metrics, etc.
+-----------------------------------------------------------------------
+10. ROADMAP / NEXT STEPS
 
-These paths are stored in config.yaml, generated by setup_brain.py.
-
-0. Next Steps / Roadmap
-
-This template is focused on getting you to a working local brain quickly. Possible next extensions:
-
-Automatic ingestion of:
-
-new Open WebUI conversations
-
-updated chat exports
-
-local notes / projects
+Automatic ingestion:
+- New WebUI conversations
+- Updated chat exports
+- Local notes and documents
 
 Daily profile synthesis:
-
-Generate profile.md summarizing what the system knows about:
-
-your environment
-
-your projects
-
-your preferences
+- Generate profile.md summarizing your environment, habits, and projects
 
 Model routing:
-
-Different models for:
-
-coding
-
-creative writing
-
-system administration
-
-uncensored exploration
+- Use different models for coding, sysadmin, creative tasks, etc.
 
 Filesystem ingestion:
-
-Index an Obsidian vault
-
-Index config directories
-
-Index code repositories
+- Index Obsidian vaults
+- Index config directories
+- Index source code
 
 CLI tooling:
+- brainctl summarize last-week
+- brainctl list-projects
+- brainctl ingest chat-export
 
-brainctl summarize last-week
-
-brainctl list-projects
-
-brainctl ingest chat-export
+-----------------------------------------------------------------------
+END OF README
